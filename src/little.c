@@ -8,6 +8,28 @@
 
 static lt_Value LT_NULL = LT_VALUE_NULL;
 
+/* if running on linux */
+#if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
+#include <stdarg.h>
+
+typedef unsigned long rsize_t;
+
+int sprintf_s(char *restrict buffer, rsize_t bufsz, const char *restrict format, ... )
+{
+	va_list args;
+    va_start(args, format);
+	int r = vsnprintf(buffer, bufsz, format, args);
+	va_end(args);
+	return r;
+}
+
+int strncpy_s( char *restrict dest, rsize_t destsz, const char *restrict src, rsize_t count )
+{
+	strncpy(dest, src, count);
+	return 0;
+}
+#endif
+
 typedef struct {
 	uint64_t hash;
 	char* string;
