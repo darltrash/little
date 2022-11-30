@@ -49,6 +49,21 @@ int main(char** argv, int argc)
 }
 ```
 ---
+## Compiling
+
+#### Linux
+```
+gcc -std=c11 main.c src/little.c src/little_std.c -lm -o little
+```
+
+#### Windows
+you need [msys2](https://www.msys2.org) _just follow the installation instructions_ 
+```
+pacman -S mingw-w64-ucrt-x86_64-gcc
+
+gcc main.c src/little.c src/little_std.c -o little
+```
+---
 ## Links
 * **[Language overview](doc/lt.md)**
 * **[Standard library](doc/ltstd.md)**
