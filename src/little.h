@@ -1,6 +1,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
+#include <stdlib.h>
 
 typedef uint64_t lt_Value;
 
@@ -288,7 +290,7 @@ typedef enum {
 	LT_OBJECT_PTR,
 } lt_ObjectType;
 
-struct lt_VM;
+typedef struct lt_VM lt_VM;
 
 typedef uint8_t(*lt_NativeFn)(struct lt_VM* vm, uint8_t argc);
 
@@ -360,7 +362,7 @@ typedef void (*lt_ErrorFn)(struct lt_VM* vm, const char*);
 #define LT_DEDUP_TABLE_SIZE 64
 #endif
 
-typedef struct {
+struct lt_VM {
 	lt_Buffer heap;
 	lt_Buffer keepalive;
 
@@ -381,7 +383,10 @@ typedef struct {
 
 	void* error_buf;
 	uint8_t generate_debug;
-} lt_VM;
+};
+
+int lt_sprintf_s( char * buffer, size_t bufsz, const char *format, ... );
+int lt_strncpy_s( char * dest, size_t destsz, const char *src, size_t count );
 
 lt_VM* lt_open(lt_AllocFn alloc, lt_FreeFn free, lt_ErrorFn error);
 void lt_destroy(lt_VM* vm);

@@ -8,26 +8,39 @@
 
 static lt_Value LT_NULL = LT_VALUE_NULL;
 
-/* if running on linux */
-#if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 #include <stdarg.h>
 
-typedef unsigned long rsize_t;
+#ifdef _WIN32
+	int lt_sprintf_s( char * buffer, size_t bufsz, const char *format, ... ) 
+	{
+		va_list args;
+		va_start(args, format);
+		int r = sprintf_s(buffer, bufsz, format, args);
+		va_end(args);
+		return r;
+	}
 
-int sprintf_s(char *restrict buffer, rsize_t bufsz, const char *restrict format, ... )
-{
-	va_list args;
-    va_start(args, format);
-	int r = vsnprintf(buffer, bufsz, format, args);
-	va_end(args);
-	return r;
-}
+	int lt_strncpy_s( char * dest, size_t destsz, const char *src, size_t count )
+	{
+		return strncpy_s(dest, src, count);
+	}
 
-int strncpy_s( char *restrict dest, rsize_t destsz, const char *restrict src, rsize_t count )
-{
-	strncpy(dest, src, count);
-	return 0;
-}
+#else
+	int lt_sprintf_s( char * buffer, size_t bufsz, const char *format, ... ) 
+	{
+		va_list args;
+		va_start(args, format);
+		int r = vsnprintf(buffer, bufsz, format, args);
+		va_end(args);
+		return r;
+	}
+
+	int lt_strncpy_s( char * dest, size_t destsz, const char *src, size_t count )
+	{
+		strncpy(dest, src, count);
+		return 0;
+	}
+
 #endif
 
 typedef struct {
@@ -166,14 +179,14 @@ double lt_get_number(lt_Value v)
 static void _lt_tokenize_error(lt_VM* vm, const char* module, uint16_t line, uint16_t col, const char* message)
 {
 	char sprint_buf[128];
-	sprintf_s(sprint_buf, 128, "%s|%d:%d: %s", module, line, col, message);
+	lt_sprintf_s(sprint_buf, 128, "%s|%d:%d: %s", module, line, col, message);
 	lt_error(vm, sprint_buf);
 }
 
 static void _lt_parse_error(lt_VM* vm, const char* module, lt_Token* t, const char* message)
 {
 	char sprint_buf[128];
-	sprintf_s(sprint_buf, 128, "%s|%d:%d: %s", module, t->line, t->col, message);
+	lt_sprintf_s(sprint_buf, 128, "%s|%d:%d: %s", module, t->line, t->col, message);
 	lt_error(vm, sprint_buf);
 }
 
@@ -210,7 +223,7 @@ void lt_runtime_error(lt_VM* vm, const char* message)
 	const char* name = "<unknown>";
 	if (info) name = info->module_name;
 
-	uint32_t len = sprintf_s(sprint_buf, 1024, "%s|%d:%d: %s\ntraceback:", name, loc.line, loc.col, message);
+	uint32_t len = lt_sprintf_s(sprint_buf, 1024, "%s|%d:%d: %s\ntraceback:", name, loc.line, loc.col, message);
 	for (uint32_t i = vm->depth - 1; i >= 0; --i)
 	{
 		lt_Frame* frame = &vm->callstack[i];
@@ -219,7 +232,7 @@ void lt_runtime_error(lt_VM* vm, const char* message)
 
 		const char* name = "<unknown>";
 		if (info) name = info->module_name;
-		len = sprintf_s(sprint_buf + len, 1024 - len, "\n(%s|%d:%d)", name, loc.line, loc.col);
+		len = lt_sprintf_s(sprint_buf + len, 1024 - len, "\n(%s|%d:%d)", name, loc.line, loc.col);
 	}
 
 	lt_error(vm, sprint_buf);
@@ -313,6 +326,7 @@ uint8_t lt_equals(lt_Value a, lt_Value b)
 		lt_Object* objb = LT_GET_OBJECT(b);
 		if (obja->type != objb->type) return 0;
 
+		// TODO: HANDLE OTHER CASES
 		switch (obja->type)
 		{
 		case LT_OBJECT_CHUNK:
@@ -343,10 +357,10 @@ lt_Tokenizer lt_tokenize(lt_VM* vm, const char* source, const char* mod_name)
 		const char* current = source;
 		uint16_t line = 1, col = 0;
 
-#define PUSH_TOKEN(new_type) { \
-	lt_Token _t; _t.type = new_type; _t.line = line; _t.col = col++; _t.idx = 0; \
-	lt_buffer_push(vm, &t.token_buffer, &_t); current++; found = 1;\
-};
+		#define PUSH_TOKEN(new_type) { \
+			lt_Token _t; _t.type = new_type; _t.line = line; _t.col = col++; _t.idx = 0; \
+			lt_buffer_push(vm, &t.token_buffer, &_t); current++; found = 1;\
+		};
 
 		while (*current)
 		{
@@ -356,7 +370,7 @@ lt_Tokenizer lt_tokenize(lt_VM* vm, const char* source, const char* mod_name)
 			case ' ': case '\t': { col++; current++; } found = 1; break;
 			case '\n': { col = 0; line++; current++; } found = 1; break;
 			case '\r': { current++; } found = 1; break;
-			case ';': { while (*current++ != '\n'); col = 1; line++; found = 1; } break;
+			case ';': { while (*current++ != '\n') {}; col = 1; line++; found = 1; } break;
 			case '.': PUSH_TOKEN(LT_TOKEN_PERIOD)		   break;
 			case ',': PUSH_TOKEN(LT_TOKEN_COMMA)		   break;
 			case ':': PUSH_TOKEN(LT_TOKEN_COLON)		   break;
@@ -403,7 +417,7 @@ lt_Tokenizer lt_tokenize(lt_VM* vm, const char* source, const char* mod_name)
 					lt_Literal newlit;
 					newlit.type = LT_TOKEN_STRING_LITERAL;
 					newlit.string = vm->alloc(length + 1);
-					strncpy_s(newlit.string, length + 1, start, length);
+					lt_strncpy_s(newlit.string, length + 1, start, length);
 					newlit.string[length] = 0;
 
 					lt_buffer_push(vm, &t.literal_buffer, &newlit);
@@ -514,7 +528,7 @@ lt_Tokenizer lt_tokenize(lt_VM* vm, const char* source, const char* mod_name)
 						lt_Identifier newid;
 						newid.num_references = 1;
 						newid.name = vm->alloc(length + 1);
-						strncpy_s(newid.name, length + 1, start, length);
+						lt_strncpy_s(newid.name, length + 1, start, length);
 						newid.name[length] = 0;
 
 						lt_buffer_push(vm, &t.identifier_buffer, &newid);
@@ -723,7 +737,7 @@ lt_Scope* _lt_parse_block(lt_VM* vm, lt_Parser* p, lt_Token* start, lt_Buffer* d
 			lt_Identifier newid;
 			newid.num_references = 1;
 			newid.name = vm->alloc(len + 1);
-			strncpy_s(newid.name, len + 1, FOR_ITER_NAME, len);
+			lt_strncpy_s(newid.name, len + 1, FOR_ITER_NAME, len);
 			newid.name[len] = 0;
 
 			lt_buffer_push(vm, &p->tkn->identifier_buffer, &newid);
@@ -843,6 +857,7 @@ end_block:
 
 uint8_t _lt_get_prec(lt_TokenType op)
 {
+	// TODO: HANDLE OTHER CASES?
 	switch (op)
 	{
 	case LT_TOKEN_NOT: case LT_TOKEN_NEGATE: return 5;

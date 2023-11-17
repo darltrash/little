@@ -1,3 +1,4 @@
+#include "little.h"
 #include "little_std.h"
 
 #include <ctype.h>
@@ -21,23 +22,23 @@ char* ltstd_tostring(lt_VM* vm, lt_Value val)
     char scratch[256];
     uint8_t len = 0;
 
-    if (LT_IS_NUMBER(val)) len = sprintf_s(scratch, 256, "%f", LT_GET_NUMBER(val));
-    if (LT_IS_NULL(val)) len = sprintf_s(scratch, 256, "null");
-    if (LT_IS_TRUE(val)) len = sprintf_s(scratch, 256, "true");
-    if (LT_IS_FALSE(val)) len = sprintf_s(scratch, 256, "false");
-    if (LT_IS_STRING(val)) len = sprintf_s(scratch, 256, "%s", lt_get_string(vm, val));;
+    if (LT_IS_NUMBER(val)) len = lt_sprintf_s(scratch, 256, "%f", LT_GET_NUMBER(val));
+    if (LT_IS_NULL(val)) len = lt_sprintf_s(scratch, 256, "null");
+    if (LT_IS_TRUE(val)) len = lt_sprintf_s(scratch, 256, "true");
+    if (LT_IS_FALSE(val)) len = lt_sprintf_s(scratch, 256, "false");
+    if (LT_IS_STRING(val)) len = lt_sprintf_s(scratch, 256, "%s", lt_get_string(vm, val));;
 
     if (LT_IS_OBJECT(val))
     {
         lt_Object* obj = LT_GET_OBJECT(val);
         switch (obj->type)
         {
-        case LT_OBJECT_CHUNK: len = sprintf_s(scratch, 256, "chunk 0x%llx", (uintptr_t)obj); break;
-        case LT_OBJECT_CLOSURE: len = sprintf_s(scratch, 256, "closure 0x%llx | %d upvals", (uintptr_t)LT_GET_OBJECT(obj->closure.function), obj->closure.captures.length); break;
-        case LT_OBJECT_FN: len = sprintf_s(scratch, 256, "function 0x%llx", (uintptr_t)obj); break;
-        case LT_OBJECT_TABLE: len = sprintf_s(scratch, 256, "table 0x%llx", (uintptr_t)obj); break;
-        case LT_OBJECT_ARRAY: len = sprintf_s(scratch, 256, "array | %d", lt_array_length(val)); break;
-        case LT_OBJECT_NATIVEFN: len = sprintf_s(scratch, 256, "native 0x%llx", (uintptr_t)obj); break;
+        case LT_OBJECT_CHUNK: len = lt_sprintf_s(scratch, 256, "chunk 0x%llx", (uintptr_t)obj); break;
+        case LT_OBJECT_CLOSURE: len = lt_sprintf_s(scratch, 256, "closure 0x%llx | %d upvals", (uintptr_t)LT_GET_OBJECT(obj->closure.function), obj->closure.captures.length); break;
+        case LT_OBJECT_FN: len = lt_sprintf_s(scratch, 256, "function 0x%llx", (uintptr_t)obj); break;
+        case LT_OBJECT_TABLE: len = lt_sprintf_s(scratch, 256, "table 0x%llx", (uintptr_t)obj); break;
+        case LT_OBJECT_ARRAY: len = lt_sprintf_s(scratch, 256, "array | %d", lt_array_length(val)); break;
+        case LT_OBJECT_NATIVEFN: len = lt_sprintf_s(scratch, 256, "native 0x%llx", (uintptr_t)obj); break;
         }
     }
 
@@ -233,7 +234,7 @@ static uint8_t _lt_array_last(lt_VM* vm, uint8_t argc)
     lt_Value arr = lt_pop(vm);
     if (!LT_IS_ARRAY(arr)) lt_runtime_error(vm, "Expected argument to array.last to be array!");
 
-    lt_push(vm, lt_array_at(arr, lt_array_length(arr) - 1));
+    lt_push(vm, *lt_array_at(arr, lt_array_length(arr) - 1));
     return 1;
 }
 
@@ -399,19 +400,19 @@ static uint8_t _lt_string_format(lt_VM* vm, uint8_t argc)
                 {
                 case 'd': case 'i': {
                     fmtbuf[fmtloc++] = *format++; fmtbuf[fmtloc] = 0;
-                    o_idx += sprintf_s(output + o_idx, 1024 - o_idx, fmtbuf, (int32_t)LT_GET_NUMBER(vm->stack[vm->top - argc + current_arg++]));
+                    o_idx += lt_sprintf_s(output + o_idx, 1024 - o_idx, fmtbuf, (int32_t)LT_GET_NUMBER(vm->stack[vm->top - argc + current_arg++]));
                 } break;
                 case 'o': case 'u': case 'x': case 'X': {
                     fmtbuf[fmtloc++] = *format++; fmtbuf[fmtloc] = 0;
-                    o_idx += sprintf_s(output + o_idx, 1024 - o_idx, fmtbuf, (uint32_t)LT_GET_NUMBER(vm->stack[vm->top - argc + current_arg++]));
+                    o_idx += lt_sprintf_s(output + o_idx, 1024 - o_idx, fmtbuf, (uint32_t)LT_GET_NUMBER(vm->stack[vm->top - argc + current_arg++]));
                 } break;
                 case 'e': case 'E': case 'f': case 'g': case 'G': {
                     fmtbuf[fmtloc++] = *format++; fmtbuf[fmtloc] = 0;
-                    o_idx += sprintf_s(output + o_idx, 1024 - o_idx, fmtbuf, LT_GET_NUMBER(vm->stack[vm->top - argc + current_arg++]));
+                    o_idx += lt_sprintf_s(output + o_idx, 1024 - o_idx, fmtbuf, LT_GET_NUMBER(vm->stack[vm->top - argc + current_arg++]));
                 } break;
                 case 's': {
                     fmtbuf[fmtloc++] = *format++; fmtbuf[fmtloc] = 0;
-                    o_idx += sprintf_s(output + o_idx, 1024 - o_idx, fmtbuf, lt_get_string(vm, vm->stack[vm->top - argc + current_arg++]));
+                    o_idx += lt_sprintf_s(output + o_idx, 1024 - o_idx, fmtbuf, lt_get_string(vm, vm->stack[vm->top - argc + current_arg++]));
                 } break;
                 default:
                     fmtbuf[fmtloc++] = *format++;
